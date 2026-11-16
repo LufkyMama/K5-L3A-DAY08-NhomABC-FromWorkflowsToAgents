@@ -16,7 +16,7 @@ Mỗi thành viên tự điền **Họ tên, MSSV, Email, GitHub** của mình; 
 | STT | Họ tên | MSSV | Email | GitHub | Vai trò |
 | --: | ------ | ---- | ----- | ------ | ------- |
 |   1 | Bùi Thế Anh | 2A202603546 | theanh7888189@gmail.com | theahASR | Người 1 — Workflow + tích hợp |
-|   2 |        |      |       |        | Người 2 — Single agent |
+|   2 | Vũ Nguyễn Hoàng Minh | 2A202603541 | minhhoang6724@gmail.com | lufkymama | Người 2 — Single agent |
 |   3 |        |      |       |        | Người 3 — Orchestrator + bảo mật |
 |   4 |        |      |       |        | Người 4 — Kiểm thử + đánh giá |
 
