@@ -126,3 +126,45 @@ def test_workflow_is_deterministic_and_uses_no_model(public_db):
     assert result.input_tokens == 0
     assert result.output_tokens == 0
     assert result.tool_calls >= 3
+
+
+def test_workflow_crash_before_effect_writes_nothing(public_db):
+    with pytest.raises(InjectedCrash):
+        workflow.run_claim("C-012", seed=11, store_path=str(public_db), crash_at="before_effect")
+    assert _ledger_rows(public_db, "C-012") == 0
+
+    resumed = workflow.run_claim("C-012", seed=11, store_path=str(public_db))
+    assert resumed.status == "resolved"
+    assert _ledger_rows(public_db, "C-012") == 1
+    assert resumed.committed_audit_count == 1
+
+
+def test_workflow_retry_same_amount_keeps_one_row(public_db):
+    first = workflow.run_claim("C-011", seed=11, store_path=str(public_db))
+    second = workflow.run_claim("C-011", seed=11, store_path=str(public_db))
+    assert first.status == "resolved"
+    assert second.status == "resolved"
+    assert second.proposal_amount == 35000
+    assert _ledger_rows(public_db, "C-011") == 1
+    assert second.committed_audit_count == 1
+
+
+def test_workflow_retry_with_changed_quote_returns_failed(public_db):
+    first = workflow.run_claim("C-011", seed=11, store_path=str(public_db))
+    assert first.status == "resolved"
+
+    # A later run sees a different entitlement. The host keeps the committed
+    # amount and reports amount_conflict; the shape must surface it as failed.
+    conn = connect(public_db)
+    try:
+        conn.execute("UPDATE orders SET shipping_fee_vnd = 20000 WHERE order_id = 'O-107'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    second = workflow.run_claim("C-011", seed=11, store_path=str(public_db))
+    assert second.status == "failed"
+    assert second.proposal_amount == 20000
+    assert second.error_reason == "amount_conflict"
+    assert _ledger_rows(public_db, "C-011") == 1
+    assert second.committed_audit_count == 1
