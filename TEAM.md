@@ -27,7 +27,7 @@ Mỗi thành viên tự điền **Họ tên, MSSV, Email, GitHub** của mình; 
 
 | Người | Vai | Commit | Test đã thêm hoặc sửa |
 | --- | --- | --- | --- |
-| Người 1 | Workflow + tích hợp | `e273e3b` feat(workflow) CP2; `1498012` test(workflow) CP3 | `src/tests/test_workflow_shape.py` (12 test: quote, PII, crash, retry, conflict) |
+| Người 1 | Workflow + tích hợp | `e273e3b` CP2; `1498012` CP3; `fc8633e` CP4 + benchmark | `src/tests/test_workflow_shape.py` (44 test: quote, PII, crash, retry, conflict, approval) |
 | | | | |
 
 ## Cá nhân
