@@ -28,10 +28,19 @@ Mỗi thành viên tự điền **Họ tên, MSSV, Email, GitHub** của mình; 
 
 | Người | Vai | Commit | Test đã thêm hoặc sửa |
 | --- | --- | --- | --- |
-| Người 1 | Workflow + tích hợp | `e273e3b` CP2; `1498012` CP3; `fc8633e` CP4 + benchmark; `972f86a` CP5 báo cáo; `2d8f39b` merge | `src/tests/test_workflow_shape.py` (44 test: quote, PII, crash, retry, conflict, approval, trần tiền) |
+| Bùi Thế Anh — Người 1 | Workflow + tích hợp | `e273e3b` CP2; `1498012` CP3; `fc8633e` CP4 + benchmark; `972f86a` CP5 báo cáo; `2d8f39b` merge | `src/tests/test_workflow_shape.py` (44 test: quote, PII, crash, retry, conflict, approval, trần tiền) |
 | Vũ Đức Thắng — Người 2 | Single agent; retry/crash; phân tích cost | `ab296cf` triển khai Single và test; `9a1e3d2` bổ sung retry/crash và benchmark Single–swarm | `src/tests/test_single_agent.py`: crash ba thời điểm, retry cùng/khác seed, quote conflict, ticket injection, trace, step cap và model budget |
 | Nguyễn Khánh Duy — Người 4 | Kiểm thử + đánh giá (crash, benchmark, ADR, research card) | `bb908c6` feat(eval): test biên, crash.json, benchmark.json, ADR, research card | `src/tests/test_member4_edge_cases.py` (3 test: idempotent retry, crash/resume, trace & không lộ CANARY_SECRET) |
 | | | | |
+
+### Bằng chứng phần Người 1
+
+- CP1: cài Python 3.13.9 + venv trong `src/`; `python -m lab8.smoke` → `lab8.smoke pass`; baseline host **54 passed**, student **186 failed / 62 passed**; viết mục **Quy ước ghép code (CP1)** trong `TEAM.md`.
+- CP2: hoàn thiện `src/lab8/shapes/workflow.py` theo contract (tiền do `compute_compensation`, host là cửa ghi duy nhất, trace sạch); **62/62** test student workflow pass; thêm 9 test đầu trong `src/tests/test_workflow_shape.py`.
+- CP3: thêm 3 test retry/crash (crash trước khi ghi, retry cùng số tiền, retry quote thay đổi); crash suite **20/20**; T11/T12 xanh trên cả 4 shape; kiểm handoff orchestrator không lộ secret/PII.
+- CP4: test approval thiếu / mượn claim khác / bị thu hồi / thấp hơn quote; trần theo đơn T13–T14; quét secret/PII trên **14 claim**; crash **20/20**.
+- CP5: benchmark 4 shape × 14 claim × 5 seed; workflow **pass 1.000, pass^5 1.000, variance 0, cost/success 27.86 VND**; tổng hợp `group_report.md`; `check_submission` **0 FAIL, 0 WARN**.
+- Commit: `e273e3b`, `1498012`, `fc8633e`, `972f86a`, `2d8f39b`. Báo cáo cá nhân: [2A202603546_BuiTheAnh.md](report/team/2A202603546_BuiTheAnh.md).
 
 ### Bằng chứng phần Người 2
 
