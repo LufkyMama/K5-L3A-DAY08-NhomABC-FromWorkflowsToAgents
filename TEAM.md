@@ -15,12 +15,11 @@ Mỗi thành viên tự điền **Họ tên, MSSV, Email, GitHub** của mình; 
 
 | STT | Họ tên | MSSV | Email | GitHub | Vai trò |
 | --: | ------ | ---- | ----- | ------ | ------- |
-|   1 | Bùi Thế Anh | 2A202603546 | theanh7888189@gmail.com | theahASR | Người 1 — Workflow + tích hợp |
-|   2 | Vũ Đức Thắng | 2A202603601 | thangvu130604@gmail.com (theo Git author) | Chưa xác nhận | Người 2 — Single agent |
-|   3 |        |      |       |        | Người 3 — Orchestrator + bảo mật |
-|   4 |        |      |       |        | Người 4 — Kiểm thử + đánh giá |
+|   1 | Bùi Thế Anh | 2A202603546 | theanh7888189@gmail.com | theahASR | Workflow + tích hợp |
+|   2 | Vũ Đức Thắng | 2A202603601 | thangvu130604@gmail.com |VUDUCTHANG130604 |  Single agent |
+|   3 | Vũ Nguyễn Hoàng Minh       |     2A202603541 |minhhoang6724@gmail.com       |LufkyMama        | Orchestrator + bảo mật |
+|   4 |        |      |       |        |Kiểm thử + đánh giá |
 
-Người 2 đã xác nhận họ tên và MSSV. Tên Git author của phần Single là `VUDUCTHANG130604`; nhóm bổ sung tài khoản GitHub của Thắng khi xác nhận. Thông tin Hoàng Minh vốn có ở dòng Người 2 được giữ để nhóm cập nhật đúng vị trí: Vũ Nguyễn Hoàng Minh, MSSV `2A202603541`, email `minhhoang6724@gmail.com`, GitHub `LufkyMama`; vai trò đang chờ nhóm xác nhận.
 
 
 ## Bảng đóng góp
@@ -43,28 +42,5 @@ Người 2 đã xác nhận họ tên và MSSV. Tên Git author của phần Sin
 - Lệnh kiểm riêng Single trong `src/`: `python -m pytest -q -m student -o addopts= -k "single and not workflow and not orchestrator and not swarm"`. Bộ lọc này tránh chọn test của shape khác qua tên hàm `test_public_single_run_cases`.
 - Các hash trên là commit chứa phần Single, có Git author `VUDUCTHANG130604`. Báo cáo cá nhân: [2A202603601_VuDucThang.md](report/team/2A202603601_VuDucThang.md).
 
-## Cá nhân
 
-Mỗi thành viên đồng thời tạo một báo cáo riêng trong `report/` theo dạng:
-
-```text
-report/team/MSSV_HoTen.md
-```
-
-Ví dụ: `report/team/20241234_NguyenVanAn.md`.
-
-Sao chép mục dưới đây cho từng thành viên.
-
-## MSSV_HoTen
-
-### Phần việc phụ trách
-
--
-
-### Đóng góp cụ thể
-
--
-
-### Bằng chứng
-
--
+##
