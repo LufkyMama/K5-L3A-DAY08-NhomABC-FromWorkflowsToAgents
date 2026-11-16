@@ -101,7 +101,7 @@ def _run(conn: sqlite3.Connection, claim_id: str, *, seed: int, crash_at: str | 
             "order_visible": bool(order_view.get("visible")),
             "order_reason": order_view.get("reason"),
             "policy_count": len((tools.get("lookup_policy") or {}).get("policies") or []),
-            "refund_history": {k: history[k] for k in ("visible", "count", "total_vnd") if k in history},
+            "refund_history": {k: history[k] for k in ("visible", "refund_count", "refunded_vnd") if k in history},
         },
     )
     if not order_view.get("visible"):
@@ -111,7 +111,7 @@ def _run(conn: sqlite3.Connection, claim_id: str, *, seed: int, crash_at: str | 
     # Money comes from compute_compensation on the DB order row, never from the ticket.
     quote = tools.get("compute_compensation") or {}
     proposal = int(quote.get("amount_vnd") or 0)
-    trace.add("quote", {k: quote[k] for k in ("amount_vnd", "reason", "clause_id") if k in quote})
+    trace.add("quote", {k: quote[k] for k in ("amount_vnd", "reason", "clause_ids") if k in quote})
     complete(budget, seed=seed, purpose="draft", prompt=f"proposal={proposal}")
 
     if proposal <= 0:
