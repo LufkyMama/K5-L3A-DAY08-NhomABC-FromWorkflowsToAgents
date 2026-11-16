@@ -36,7 +36,7 @@
   - `single`: pass `1.000`, pass^5 `1.000`, variance `0.000000`, cost/success `37.68` VND, mean steps `7.71`.
   - `orchestrator`: pass `1.000`, pass^5 `1.000`, variance `0.000000`, cost/success `57.19` VND, mean steps `4.71`.
   - `swarm`: pass `0.986`, pass^5 `0.929`, variance `0.000816`, cost/success `49.57` VND, mean steps `2.80`.
-- Commit hash: [điền mã commit sau khi push]
+- Commit hash: bb908c6
 
 ## 5. Công cụ AI đã dùng
 
