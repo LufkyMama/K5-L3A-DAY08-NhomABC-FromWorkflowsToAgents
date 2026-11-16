@@ -77,6 +77,7 @@ python -m pytest -q -m student -o addopts= -k workflow
 
 | Người | Vai | Commit | Test đã thêm hoặc sửa |
 | --- | --- | --- | --- |
+| Người 1 | Workflow + tích hợp | `e273e3b` feat(workflow): hoàn thiện shape A và thêm test CP2 | `src/tests/test_workflow_shape.py` |
 | | | | |
 
 ## Cá nhân
