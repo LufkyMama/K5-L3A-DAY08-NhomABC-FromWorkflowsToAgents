@@ -14,7 +14,11 @@ import pytest
 
 from lab8.db import connect
 from lab8.durability import InjectedCrash
+from lab8.metrics import artifact_blob
 from lab8.shapes import workflow
+from tests.conftest import BY_ID
+
+ALL_CLAIMS = [f"C-{index:03d}" for index in range(1, 15)]
 
 
 def _ledger_rows(store: Path, claim_id: str) -> int:
@@ -42,6 +46,22 @@ def _policy_denied_rows(store: Path, claim_id: str) -> int:
                 (claim_id,),
             ).fetchone()["n"]
         )
+    finally:
+        conn.close()
+
+
+def _policy_denied_reason(store: Path, claim_id: str) -> str | None:
+    conn = connect(store)
+    try:
+        row = conn.execute(
+            """
+            SELECT details_json FROM audit_events
+            WHERE claim_id = ? AND event_type = 'policy_denied'
+            ORDER BY audit_key LIMIT 1
+            """,
+            (claim_id,),
+        ).fetchone()
+        return json.loads(row["details_json"])["reason"] if row else None
     finally:
         conn.close()
 
@@ -168,3 +188,82 @@ def test_workflow_retry_with_changed_quote_returns_failed(public_db):
     assert second.error_reason == "amount_conflict"
     assert _ledger_rows(public_db, "C-011") == 1
     assert second.committed_audit_count == 1
+
+
+def test_workflow_missing_approval_is_denied_with_audit(public_db):
+    conn = connect(public_db)
+    try:
+        conn.execute(
+            """
+            INSERT INTO claims (
+              claim_id, principal_id, order_id, ticket, parent_secret, raw_headers_json, approval_id
+            ) VALUES ('C-NOAPPROVAL', 'P-100', 'O-107', 'hoan phu ship', 'CANARY_SECRET_PARENT_NOAPPROVAL', '{}', NULL)
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = workflow.run_claim("C-NOAPPROVAL", seed=11, store_path=str(public_db))
+    assert result.status == "denied"
+    assert result.proposal_amount == 35000
+    assert result.refund_effects == []
+    assert _ledger_rows(public_db, "C-NOAPPROVAL") == 0
+    assert _policy_denied_reason(public_db, "C-NOAPPROVAL") == "missing_approval"
+
+
+def test_workflow_approval_from_another_claim_is_denied(public_db):
+    conn = connect(public_db)
+    try:
+        conn.execute("UPDATE claims SET approval_id = 'A-002' WHERE claim_id = 'C-001'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = workflow.run_claim("C-001", seed=11, store_path=str(public_db))
+    assert result.status == "denied"
+    assert result.proposal_amount == 35000
+    assert result.refund_effects == []
+    assert _ledger_rows(public_db, "C-001") == 0
+    assert _policy_denied_reason(public_db, "C-001") == "approval_claim_mismatch"
+
+
+def test_workflow_revoked_approval_is_denied(public_db):
+    conn = connect(public_db)
+    try:
+        conn.execute("UPDATE approvals SET status = 'revoked' WHERE approval_id = 'A-001'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = workflow.run_claim("C-001", seed=11, store_path=str(public_db))
+    assert result.status == "denied"
+    assert result.proposal_amount == 35000
+    assert result.refund_effects == []
+    assert _ledger_rows(public_db, "C-001") == 0
+    assert _policy_denied_reason(public_db, "C-001") == "approval_revoked"
+
+
+def test_workflow_approval_lower_than_quote_caps_refund(public_db):
+    result = workflow.run_claim("C-008", seed=11, store_path=str(public_db))
+    assert result.status == "resolved"
+    assert result.proposal_amount == 35000
+    assert result.refund_effects[0]["amount_vnd"] == 20000
+    assert result.committed_audit_count == 1
+
+
+@pytest.mark.parametrize("claim_id", ALL_CLAIMS)
+def test_workflow_never_refunds_without_valid_approval(public_db, claim_id):
+    expected = BY_ID[claim_id]["expected"]
+    result = workflow.run_claim(claim_id, seed=11, store_path=str(public_db))
+    if not expected["approval_ok"]:
+        assert result.refund_effects == []
+        assert _ledger_rows(public_db, claim_id) == 0
+
+
+@pytest.mark.parametrize("claim_id", ALL_CLAIMS)
+def test_workflow_trace_has_no_forbidden_substrings(public_db, claim_id):
+    result = workflow.run_claim(claim_id, seed=11, store_path=str(public_db))
+    blob = artifact_blob(result.as_dict())
+    for token in BY_ID[claim_id]["expected"]["forbid_substrings"]:
+        assert token not in blob
