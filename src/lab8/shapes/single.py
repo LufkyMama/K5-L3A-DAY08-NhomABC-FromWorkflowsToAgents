@@ -13,6 +13,10 @@ the cap, so pass the full quote to `durability.issue_refund`, not a net amount.
 
 Caps: stop at 8 steps. Count model calls in the Budget so cost stays comparable.
 
+Retry/crash: forward crash_at to the host and let InjectedCrash propagate.
+Retry against the same store; the host owns the refund:{claim_id} key and
+checkpoint recovery. Never create a new refund key from the seed or run_id.
+
 Trace contract v1 (docs/contracts.md): return a trace_path to a JSON file written in this run,
 {"run_id": <same run_id>, "events": [...]}, on every return path including early
 ones. `lab8.trace.Trace` does this; your own tracer is fine if it matches.
@@ -110,7 +114,12 @@ def run_claim(
 
         # Only the host writes. Pass the full quote so it can enforce approval,
         # per-order caps and retry safety in one transaction. Let crashes escape.
+        # Persist the attempt before the effect so even an interrupted run has
+        # a current trace. This event does not claim that a refund committed.
+        trace.add("refund_attempt", {"proposal_amount": proposal})
+        trace.write()
         outcome = issue_refund(conn, claim_id, proposal, crash_at=crash_at)
+        trace.add("refund_outcome", {"ok": outcome["ok"], "reason": outcome["reason"]})
         if not outcome["ok"]:
             return result("failed" if outcome["conflict"] else "denied", proposal, outcome["reason"])
         return result("resolved", proposal)
