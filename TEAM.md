@@ -78,7 +78,7 @@ python -m pytest -q -m student -o addopts= -k workflow
 | Người | Vai | Commit | Test đã thêm hoặc sửa |
 | --- | --- | --- | --- |
 | Người 1 | Workflow + tích hợp | `e273e3b` feat(workflow) CP2; `1498012` test(workflow) CP3 | `src/tests/test_workflow_shape.py` (12 test: quote, PII, crash, retry, conflict) |
-| | | | |
+| Người 3 | Orchestrator + bảo mật | `8cd902c` feat(orchestrator) CP2–CP3; commit "submit cp4, cp5" (audit bảo mật CP4–CP5) | `src/tests/test_orchestrator_handoff.py` (16 test: handoff allowlist, trace không lộ secret, không tin delay ticket); `src/tests/test_trace_privacy_all_shapes.py` (7 test: quét PII/secret thật trên 3 shape) |
 
 ## Cá nhân
 
