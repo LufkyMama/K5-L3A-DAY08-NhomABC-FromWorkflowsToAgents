@@ -4,23 +4,31 @@ Tối đa 5 trang ngoài phụ lục. Số liệu lấy từ file trong `src/rep
 
 ## 1. Thông tin nhóm
 
-- Tên nhóm:
+- Tên nhóm: Nhóm ABC
 - Thành viên: xem `TEAM.md`
-- Commit chốt (trùng `report/team/decision_adr.md`):
+  - Bùi Thế Anh — 2A202603546 — Người 1 (Workflow + tích hợp)
+  - Vũ Đức Thắng — 2A202603601 — Người 2 (Single agent)
+  - Vũ Nguyễn Hoàng Minh — 2A202603541 — Người 3 (Orchestrator + bảo mật)
+  - Nguyễn Khánh Duy — 2A202603575 — Người 4 (Kiểm thử + đánh giá)
+- Commit chốt (trùng `report/team/decision_adr.md`): `bb908c6`
 
 ## 2. Mục tiêu và cách tiếp cận
 
-Nhóm hiểu bài toán thế nào, chia việc ra sao, thứ tự làm bốn shape.
+Nhóm hiểu bài toán là một quy trình xử lý claim hoàn phí vận chuyển có giao tiền thật trong môi trường giả lập: phải xác định đúng entitlement từ order row và policy hiện hành, kiểm approval, tránh ghi trùng khi retry/crash, không lộ secret/PII, và cuối cùng chọn kiến trúc **ít tự chủ nhất mà vẫn làm được việc** dựa trên số đo.
 
-...
+Cách chia việc bám theo bảng phân vai: Người 1 phụ trách workflow + tích hợp; Người 2 phụ trách single agent; Người 3 phụ trách orchestrator + handoff/trace; Người 4 phụ trách test ledger/crash, benchmark và ADR. Thứ tự làm: CP1 cài môi trường và đọc contract; CP2 viết ba shape; CP3 retry/crash/handoff; CP4 rà must-pass; CP5 benchmark và chốt kiến trúc. Nguyên tắc chung: **tiền và approval do code quyết**, model chỉ đọc dữ liệu và soạn câu chữ; `durability.issue_refund` là cửa ghi duy nhất.
 
 Người 2 phụ trách Single agent: đọc runtime và MockLLM ở CP1; triển khai `single.py` ở CP2; hoàn thiện retry/crash ở CP3; bàn giao kiểm thử, phân tích chi phí và giới hạn của phép đo cho nhóm ở CP4–CP5.
 
 ## 3. Giải pháp
 
-Mô tả ba shape nhóm viết (workflow, single, orchestrator): mỗi shape đọc gì, quyết định gì, gọi host ra sao. Chỉ rõ ranh giới code / model (tham khảo [docs/architecture.md](../../docs/architecture.md)), cách handoff được sanitize và trace ghi những event nào.
+Ba shape nhóm viết dùng chung chữ ký `run_claim(claim_id, *, seed, store_path, crash_at=None)` và cùng một host. Swarm là shape tham chiếu có sẵn, dùng để đo cost và variance. Ranh giới chung: tiền do `compute_compensation`, approval/idempotency/trần theo đơn do host, model chỉ đọc dữ liệu và soạn câu chữ.
 
-...
+### Shape A — workflow (Người 1)
+
+Luồng Python cố định, không gọi model. Đọc claim qua `get_claim_view`; thiếu `order_id` trả `needs_info`; `lookup_order` kiểm quyền sở hữu và trả `escalated` nếu ngoài phạm vi; `compute_compensation` tính quote từ order row; quote 0 trả `denied` mà không gọi host; quote dương gọi `issue_refund` với **quote đầy đủ**. Host tự trừ phần đơn đã hoàn và cap theo approval/paid (T13, T14). Trace có bốn event: `claim_view`, `order_view`, `quote`, `decision`; không ghi ticket hay order row thô.
+
+Ranh giới: tiền do `compute_compensation`; approval, idempotency và trần theo đơn do host; workflow không có model nên không thể bị ticket đánh lừa. Test riêng: `src/tests/test_workflow_shape.py` (44 test), gồm crash ở ba cửa sổ, retry cùng/khác số tiền, approval thiếu/mượn claim khác/bị thu hồi, và quét secret/PII trên toàn bộ 14 claim public.
 
 ### Single agent — Người 2
 
@@ -32,7 +40,7 @@ MockLLM không có API tool-call có cấu trúc: `decide` là bộ điều ph�
 
 Khi crash, `crash_at` được truyền nguyên vào host và `InjectedCrash` truyền ra ngoài. `refund_attempt` được lưu trước thao tác ghi; kết nối luôn đóng trong `finally`. Resume trên cùng DB với cùng claim, không truyền `crash_at`; host dùng khóa `refund:{claim_id}`, độc lập với seed, để giữ một refund và một audit committed.
 
-### 3.C Orchestrator, handoff và bảo mật (Người 3)
+### Shape C — orchestrator, handoff và bảo mật (Người 3)
 
 **Luồng của shape C** (`src/lab8/shapes/orchestrator.py`):
 
@@ -64,11 +72,25 @@ Tóm tắt bằng LLM không được dùng làm redaction; chỉ allowlist tron
 - Ma trận student cho ba shape nhóm viết (`-k "not swarm"`): 186 passed, gồm các nhánh approval sai claim / hết hạn / thiếu, đơn đã hoàn đủ (T13), trần theo đơn (T14), T11, T12.
 - `python -m lab8.crash_test --count 20` → `crash_safety` 20/20.
 
+### Shape D — swarm (đối chứng)
+
+Swarm có sẵn trong starter, dùng để đo cost và variance. Ở seed chia hết cho 5, swarm tin số ngày trong ticket thay vì cột `delay_days`; trên public set, T02 seed 55 fail với `status resolved != denied`. Đây là điểm yếu cố ý, không copy vào ba shape nhóm viết.
+
 ## 4. Kết quả
 
 Bảng so sánh 4 shape trên bộ public (từ `src/reports/benchmark.json`): pass rate, pass^5, seed min–max, variance, cost/success, mean/p95 steps. Kèm crash safety (`src/reports/crash.json`) và, nếu có, kết quả tự kiểm trên `student_drop/`.
 
-...
+| Shape | Pass rate | Pass^5 | Seed min–max | Variance | Cost/success (VND) | Mean steps | p95 steps |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| workflow | 1.000 | 1.000 | 1.000–1.000 | 0.000000 | 27.86 | 3.79 | 4.0 |
+| single | 1.000 | 1.000 | 1.000–1.000 | 0.000000 | 37.68 | 7.71 | 9.0 |
+| orchestrator | 1.000 | 1.000 | 1.000–1.000 | 0.000000 | 57.19 | 4.71 | 5.0 |
+| swarm | 0.986 | 0.929 | 0.929–1.000 | 0.000816 | 49.57 | 2.80 | 3.0 |
+
+- **Crash safety:** 20/20 (`src/reports/crash.json`).
+- **Approval bypass / secret leak:** 0 / 0 trên public matrix và test CP4; hidden do grader riêng của giảng viên chấm.
+- **Swarm:** fail đúng một trial `C-002` ở seed 55 (`status resolved != denied`), do tin ticket "trễ 5 ngày" thay vì order row "2 ngày".
+- **Hidden self-check:** chưa chạy vì chưa có `student_drop/`; điểm hidden chính thức do giảng viên chấm.
 
 ### Kết quả Single được bàn giao
 
@@ -93,9 +115,11 @@ Quyết định kiến trúc và lý do: xem `report/team/decision_adr.md`. Phi�
 
 ## 5. Khó khăn và cách xử lý
 
-Lỗi gặp phải (kèm lệnh, output hoặc ảnh chụp) và cách nhóm xử lý.
+Các lỗi chính gặp phải và cách nhóm xử lý:
 
-...
+- **Windows + pytest:** `python -m pytest -q` lỗi `PermissionError` ở `%TEMP%\pytest-of-ThinkPad` (thư mục temp bị khoá quyền). Nhóm trỏ `PYTEST_DEBUG_TEMPROOT` sang thư mục tạm mới; sau đó cổng host chạy bình thường. Fix này chỉ áp dụng trên máy này, không nằm trong repo.
+- **Ghép code đồng thời:** bốn người cùng sửa repo. Nhóm giữ mỗi người một file shape riêng, pull/merge trước khi chạy lại cổng host, và chạy lại toàn bộ ma trận student sau mỗi lần merge. Khi conflict ở file dùng chung, nhóm giữ bản `origin/main` để không đè phần của người khác.
+- **Benchmark và crash suite:** chạy lại từ đầu sau khi merge; không sửa tay JSON trong `src/reports/`.
 
 Với phần Single, lệnh `-k single` còn chọn test của shape khác do tên hàm `test_public_single_run_cases`; dùng bộ lọc `-k "single and not workflow and not orchestrator and not swarm"` để kiểm đúng 62 test của Single. Môi trường `.venv` từng thiếu pytest; các kết quả kiểm chứng được chạy bằng lệnh `python` có sẵn pytest, không tự nhận là đã cài xong dependency trong `.venv`.
 
@@ -103,16 +127,25 @@ Với phần Single, lệnh `-k single` còn chọn test của shape khác do t�
 
 Chi tiết đóng góp của từng thành viên nằm trong `TEAM.md` (bảng đóng góp) và báo cáo cá nhân `report/team/MSSV_HoTen.md`.
 
+Người 1 bàn giao `src/lab8/shapes/workflow.py`, `src/tests/test_workflow_shape.py` (44 test), quy ước ghép code trong `TEAM.md`, và xử lý merge/checklist nộp. Commit kỹ thuật: `e273e3b`, `1498012`, `fc8633e`; commit báo cáo/tích hợp: `972f86a`, `5d73913`, `2d8f39b`. Báo cáo cá nhân: `report/team/2A202603546_BuiTheAnh.md`.
+
 Người 2 bàn giao `src/lab8/shapes/single.py`, `src/tests/test_single_agent.py` và phân tích Single/cost. Commit chứa phần kỹ thuật: `ab296cf` và `9a1e3d2`; report đo nằm trong `src/reports/benchmark_single_cost.json`. Công cụ hỗ trợ là Codex; phần AI hỗ trợ triển khai và kiểm chứng được khai trong báo cáo cá nhân.
 
 ## 7. Hạn chế và hướng cải thiện
 
-MockLLM không phải model sản xuất; latency là `unavailable`. Nêu thêm giới hạn của nhóm và điều kiện làm kết luận thay đổi.
+Các giới hạn chính của phép đo và điều kiện làm kết luận thay đổi:
 
-...
+- MockLLM không phải model sản xuất; latency là `unavailable`; cost là giá mô phỏng, không phải hoá đơn API.
+- Benchmark chỉ có 14 claim public × 5 seed; hidden 40 claim × 5 seed do giảng viên chấm. Kết luận không mở rộng ra ngoài corpus này.
+- Workflow không gọi model nên nhóm chưa đo chất lượng câu trả lời khách; chỉ đo quyết định tiền, trace và cost.
+- Quyết định chọn workflow sẽ đảo lại nếu hidden set có nhiều claim cần đọc ticket mơ hồ, task có nhiều nhánh song song, hoặc yêu cầu soạn câu trả lời khách trở thành tiêu chí chấm.
 
 Với Single, variance bằng 0 phản ánh điều phối bằng code và backend mô phỏng trong bộ public; chưa chứng minh độ ổn định của LLM thật hoặc pass rate hidden. Chi phí chỉ gồm token/tool được ghi nhận theo bảng giá lab, không phải chi phí vận hành đầy đủ. Benchmark DB mới chưa đo cost của retry/crash. Việc đọc policy ở vòng ReAct rồi đọc lại trong `compute_compensation` là hướng tối ưu chưa thử nghiệm; chưa báo cáo mức tiết kiệm cho thay đổi này.
 
 ## 8. Tài liệu tham khảo
 
-...
+- `README.md`, `docs/business_rules.md`, `docs/contracts.md`, `docs/architecture.md`, `docs/metrics.md` của lab.
+- Google Research 2026, *Towards a Science of Scaling Agent Systems* (R1, theo slide 68–69).
+- MAST, NeurIPS 2025, *Why Do Multi-Agent LLM Systems Fail?* (R2).
+- AgentArch, AACL 2026 (R3); EMNLP 2026, *Rethinking Evaluation of MAS Efficiency* (R4).
+- Mã nguồn lab trong `src/lab8/`, test trong `src/tests/`, bằng chứng trong `src/reports/`.

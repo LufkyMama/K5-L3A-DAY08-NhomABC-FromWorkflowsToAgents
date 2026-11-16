@@ -28,7 +28,7 @@ Mỗi thành viên tự điền **Họ tên, MSSV, Email, GitHub** của mình; 
 
 | Người | Vai | Commit | Test đã thêm hoặc sửa |
 | --- | --- | --- | --- |
-| Người 1 | Workflow + tích hợp | `e273e3b` feat(workflow) CP2; `1498012` test(workflow) CP3 | `src/tests/test_workflow_shape.py` (12 test: quote, PII, crash, retry, conflict) |
+| Người 1 | Workflow + tích hợp | `e273e3b` CP2; `1498012` CP3; `fc8633e` CP4 + benchmark; `972f86a` CP5 báo cáo; `2d8f39b` merge | `src/tests/test_workflow_shape.py` (44 test: quote, PII, crash, retry, conflict, approval, trần tiền) |
 | Vũ Đức Thắng — Người 2 | Single agent; retry/crash; phân tích cost | `ab296cf` triển khai Single và test; `9a1e3d2` bổ sung retry/crash và benchmark Single–swarm | `src/tests/test_single_agent.py`: crash ba thời điểm, retry cùng/khác seed, quote conflict, ticket injection, trace, step cap và model budget |
 | Nguyễn Khánh Duy — Người 4 | Kiểm thử + đánh giá (crash, benchmark, ADR, research card) | `bb908c6` feat(eval): test biên, crash.json, benchmark.json, ADR, research card | `src/tests/test_member4_edge_cases.py` (3 test: idempotent retry, crash/resume, trace & không lộ CANARY_SECRET) |
 | | | | |
